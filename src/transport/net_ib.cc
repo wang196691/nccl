@@ -768,6 +768,7 @@ struct ncclIbRequest {
     struct {
       int size;
       void* data;
+      uint64_t baseOffset;
       uint32_t lkeys[NCCL_IB_MAX_DEVS_PER_NIC];
       int offset;
     } send;
@@ -1713,6 +1714,7 @@ ncclResult_t ncclIbIsend(void* sendComm, void* data, int size, int tag, void* mh
   for (int r=0; r<nreqs; r++) {
     if (reqs[r] != NULL || slots[r].tag != tag) continue;
 
+    //远端填写的size是自己的剩余可用的空间的size
     if (size > slots[r].size) size = slots[r].size;
     // Sanity checks
     if (slots[r].size < 0 || slots[r].addr == 0 || slots[r].rkeys[0] == 0) {
@@ -1791,9 +1793,9 @@ ncclResult_t ncclIbPostFifo(struct ncclIbRecvComm* comm, int n, void** data, int
   comm->base.devIndex = (comm->base.devIndex + 1) % comm->base.ndevs;
 
   for (int i=0; i<n; i++) {
-    localElem[i].addr = (uint64_t)data[i];
+    // localElem[i].addr = (uint64_t)data[i];
     struct ncclIbMrHandle* mhandleWrapper = (struct ncclIbMrHandle*) mhandles[i];
-
+    localElem[i].addr = mhandleWrapper->mrs[0]->addr;
     // Send all applicable rkeys
     for (int j = 0; j < comm->base.ndevs; j++)
       localElem[i].rkeys[j] = mhandleWrapper->mrs[j]->rkey;
